@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import * as brevo from '@getbrevo/brevo';
 import User from '../models/User.js';
 import { getPendingRegistration, deletePendingRegistration, storePendingRegistration, pendingRegistrations } from '../auth/authController.js';
+import { logger } from '../utils/logger.js';
 
 // Initialize Brevo API client
 const apiInstance = new brevo.TransactionalEmailsApi();
@@ -10,8 +11,29 @@ apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BR
 // Send verification email with OTP using Brevo
 export const sendVerificationEmail = async (user, verificationOTP) => {
   try {
+    logger.debug('[OTP_EMAIL] Starting OTP email send process', { 
+      userEmail: user.email,
+      userName: user.name,
+      timestamp: new Date().toISOString()
+    });
+
+    // Validate environment variables
+    if (!process.env.BREVO_API_KEY) {
+      logger.error('[OTP_EMAIL] Missing BREVO_API_KEY environment variable', {
+        userEmail: user.email
+      });
+      throw new Error('BREVO_API_KEY is not configured');
+    }
+
     const fromEmail = process.env.BREVO_FROM_EMAIL || 'bhashkarkumar2063@gmail.com';
     const fromName = process.env.BREVO_FROM_NAME || 'ChefHub';
+
+    logger.debug('[OTP_EMAIL] Brevo config loaded', {
+      fromEmail,
+      fromName,
+      toEmail: user.email,
+      toName: user.name
+    });
     
     const sendSmtpEmail = new brevo.SendSmtpEmail();
     sendSmtpEmail.sender = { name: fromName, email: fromEmail };
@@ -86,10 +108,37 @@ export const sendVerificationEmail = async (user, verificationOTP) => {
         </html>
       `;
 
+    logger.debug('[OTP_EMAIL] Email content prepared', {
+      userEmail: user.email,
+      htmlLength: sendSmtpEmail.htmlContent?.length || 0
+    });
+
+    logger.info('[OTP_EMAIL] Sending OTP email via Brevo', {
+      toEmail: user.email,
+      toName: user.name,
+      fromEmail: fromEmail,
+      fromName: fromName
+    });
+
     const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+
+    logger.info('[OTP_EMAIL] ✅ Email sent successfully', {
+      userEmail: user.email,
+      messageId: result.messageId,
+      timestamp: new Date().toISOString()
+    });
+
     return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error('[BREVO] Email sending failed:', error);
+    logger.error('[OTP_EMAIL] ❌ Email sending failed', {
+      userEmail: user?.email,
+      error: error.message,
+      errorCode: error.code,
+      errorStatus: error.status,
+      errorResponse: error.response?.data || error.response?.text || 'No response data',
+      timestamp: new Date().toISOString(),
+      stack: error.stack
+    });
     throw error;
   }
 };
@@ -99,27 +148,47 @@ export const verifyEmail = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    // console.log(`[VERIFY] Received verification request for ${email} with OTP: ${otp}`);
+    logger.info('[VERIFY_OTP] Email verification request received', {
+      email,
+      otpLength: otp?.length || 0,
+      timestamp: new Date().toISOString()
+    });
 
     if (!email || !otp) {
-      // console.log(`[VERIFY] ❌ Missing email or OTP`);
+      logger.warn('[VERIFY_OTP] Missing email or OTP', {
+        hasEmail: !!email,
+        hasOtp: !!otp
+      });
       return res.status(400).json({ 
         success: false,
         message: 'Email and OTP are required' 
       });
     }
 
+    logger.debug('[VERIFY_OTP] Fetching pending registration', { email });
+
     // Get pending registration data from Redis (or fallback to in-memory)
     let pendingData;
     try {
       pendingData = await getPendingRegistration(email);
+      logger.debug('[VERIFY_OTP] Pending data retrieved from Redis', { 
+        email, 
+        hasPendingData: !!pendingData 
+      });
     } catch (redisError) {
-      // console.warn(`[REDIS] Failed, using in-memory fallback:`, redisError.message);
+      logger.warn('[VERIFY_OTP] Redis fetch failed, using in-memory fallback', {
+        email,
+        error: redisError.message
+      });
       pendingData = pendingRegistrations.get(email);
+      logger.debug('[VERIFY_OTP] Checked in-memory store', { 
+        email, 
+        hasPendingData: !!pendingData 
+      });
     }
     
     if (!pendingData) {
-      // console.log(`[VERIFY] ❌ No pending registration found for ${email}`);
+      logger.error('[VERIFY_OTP] No pending registration found', { email });
       return res.status(400).json({ 
         success: false,
         message: 'No pending registration found. Please register again.'
@@ -128,12 +197,16 @@ export const verifyEmail = async (req, res) => {
 
     // Check if OTP expired
     if (pendingData.expiresAt < Date.now()) {
+      logger.warn('[VERIFY_OTP] OTP expired', {
+        email,
+        expiresAt: new Date(pendingData.expiresAt).toISOString(),
+        now: new Date().toISOString()
+      });
       try {
         await deletePendingRegistration(email);
       } catch {
         pendingRegistrations.delete(email);
       }
-      // console.log(`[VERIFY] ⏰ OTP expired for ${email}`);
       return res.status(400).json({ 
         success: false,
         message: 'OTP has expired. Please register again.',
@@ -144,8 +217,15 @@ export const verifyEmail = async (req, res) => {
     // Hash the entered OTP and compare
     const hashedOTP = crypto.createHash('sha256').update(otp.toString()).digest('hex');
     
+    logger.debug('[VERIFY_OTP] OTP comparison', {
+      email,
+      inputOtpHash: hashedOTP.substring(0, 10) + '***',
+      storedOtpHash: pendingData.otp.substring(0, 10) + '***',
+      match: hashedOTP === pendingData.otp
+    });
+
     if (hashedOTP !== pendingData.otp) {
-      // console.log(`[VERIFY] ❌ Incorrect OTP entered for ${email}`);
+      logger.warn('[VERIFY_OTP] Incorrect OTP entered', { email });
       return res.status(400).json({ 
         success: false,
         message: 'Incorrect OTP. Please check your email and try again.'
@@ -153,7 +233,7 @@ export const verifyEmail = async (req, res) => {
     }
 
     // OTP is correct - Now create the user in database
-    // console.log(`[VERIFY] ✅ OTP verified for ${email}, creating user in database...`);
+    logger.info('[VERIFY_OTP] OTP verified, creating user', { email });
     
     const newUser = new User({
       name: pendingData.name,
@@ -164,14 +244,17 @@ export const verifyEmail = async (req, res) => {
     
     await newUser.save();
     
+    logger.info('[VERIFY_OTP] ✅ User created in database', {
+      email,
+      userId: newUser._id
+    });
+
     // Remove from pending registrations (Redis or in-memory)
     try {
       await deletePendingRegistration(email);
     } catch {
       pendingRegistrations.delete(email);
     }
-    
-    // console.log(`[VERIFY] ✅ User created successfully for ${email}`);
     
     res.json({ 
       success: true,
@@ -184,7 +267,11 @@ export const verifyEmail = async (req, res) => {
     });
 
   } catch (error) {
-    // console.error('❌ Email verification error:', error);
+    logger.error('[VERIFY_OTP] Email verification error', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
     res.status(500).json({ 
       success: false,
       message: 'Server error during verification' 
@@ -284,31 +371,50 @@ export const resendVerificationEmail = async (req, res) => {
   try {
     const { email } = req.body;
 
-    // console.log(`[RESEND] Resend OTP requested for ${email}`);
+    logger.info('[RESEND_OTP] Resend OTP requested', {
+      email,
+      timestamp: new Date().toISOString()
+    });
 
     if (!email) {
+      logger.warn('[RESEND_OTP] Missing email address');
       return res.status(400).json({ 
         success: false,
         message: 'Email address is required' 
       });
     }
 
+    logger.debug('[RESEND_OTP] Fetching pending registration', { email });
+
     // Check if there's a pending registration (Redis or in-memory)
     let pendingData;
     try {
       pendingData = await getPendingRegistration(email);
+      logger.debug('[RESEND_OTP] Pending data retrieved from Redis', { 
+        email, 
+        hasPendingData: !!pendingData 
+      });
     } catch (redisError) {
-      // console.warn(`[REDIS] Failed, using in-memory fallback:`, redisError.message);
+      logger.warn('[RESEND_OTP] Redis fetch failed, using in-memory fallback', {
+        email,
+        error: redisError.message
+      });
       pendingData = pendingRegistrations.get(email);
+      logger.debug('[RESEND_OTP] Checked in-memory store', { 
+        email, 
+        hasPendingData: !!pendingData 
+      });
     }
     
     if (!pendingData) {
-      // console.log(`[RESEND] ❌ No pending registration for ${email}`);
+      logger.error('[RESEND_OTP] No pending registration found', { email });
       return res.status(404).json({ 
         success: false,
         message: 'No pending registration found. Please register again.' 
       });
     }
+
+    logger.debug('[RESEND_OTP] Generating new OTP', { email });
 
     // Generate new OTP (6-digit, 10-minute expiry)
     const verificationOTP = Math.floor(100000 + Math.random() * 900000).toString();
@@ -318,17 +424,31 @@ export const resendVerificationEmail = async (req, res) => {
     pendingData.otp = hashedOTP;
     pendingData.expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
     
+    logger.debug('[RESEND_OTP] Storing updated pending registration', {
+      email,
+      expiresAt: new Date(pendingData.expiresAt).toISOString()
+    });
+
     try {
       await storePendingRegistration(email, pendingData);
+      logger.debug('[RESEND_OTP] Successfully stored in Redis', { email });
     } catch (redisError) {
-      // console.warn(`[REDIS] Failed, using in-memory fallback:`, redisError.message);
+      logger.warn('[RESEND_OTP] Redis store failed, using in-memory fallback', {
+        email,
+        error: redisError.message
+      });
       pendingRegistrations.set(email, pendingData);
     }
+
+    logger.info('[RESEND_OTP] Sending verification email', { email });
 
     // Send new verification email
     await sendVerificationEmail({ name: pendingData.name, email }, verificationOTP);
 
-    // console.log(`[RESEND] ✅ New OTP sent to ${email}`);
+    logger.info('[RESEND_OTP] ✅ New OTP sent successfully', {
+      email,
+      timestamp: new Date().toISOString()
+    });
 
     res.json({ 
       success: true,
@@ -336,7 +456,12 @@ export const resendVerificationEmail = async (req, res) => {
     });
 
   } catch (error) {
-    // console.error('❌ Error resending verification email:', error);
+    logger.error('[RESEND_OTP] Error resending verification email', {
+      email: req.body?.email,
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
     res.status(500).json({ 
       success: false,
       message: 'Failed to resend verification email' 

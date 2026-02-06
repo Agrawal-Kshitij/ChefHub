@@ -5,24 +5,37 @@ import User from '../models/User.js';
 import { verifyFirebaseToken, getFirebaseUserByPhone } from '../services/smsService.js';
 import { sendVerificationEmail } from '../controllers/emailVerificationController.js';
 import redis from '../config/redis.js';
+import { logger } from '../utils/logger.js';
 
 // Helper functions for Redis-based pending registrations
 export const storePendingRegistration = async (email, data) => {
   const key = `pending:registration:${email}`;
+  logger.debug('[REDIS] Storing pending registration', {
+    email,
+    key,
+    expiresAt: new Date(data.expiresAt).toISOString()
+  });
   await redis.setex(key, 600, JSON.stringify(data)); // 10 minutes TTL
-  // console.log(`[REDIS] Stored pending registration for: ${email}`);
+  logger.debug('[REDIS] Pending registration stored successfully', { email });
 };
 
 export const getPendingRegistration = async (email) => {
   const key = `pending:registration:${email}`;
+  logger.debug('[REDIS] Retrieving pending registration', { email, key });
   const data = await redis.get(key);
-  return data ? JSON.parse(data) : null;
+  const result = data ? JSON.parse(data) : null;
+  logger.debug('[REDIS] Retrieved pending registration', { 
+    email, 
+    found: !!result 
+  });
+  return result;
 };
 
 export const deletePendingRegistration = async (email) => {
   const key = `pending:registration:${email}`;
+  logger.debug('[REDIS] Deleting pending registration', { email, key });
   await redis.del(key);
-  // console.log(`[REDIS] Deleted pending registration for: ${email}`);
+  logger.debug('[REDIS] Pending registration deleted', { email });
 };
 
 // Fallback: In-memory store if Redis is unavailable
@@ -42,30 +55,63 @@ setInterval(() => {
 export const registerUser = async (req, res) => {
   const { name, email, password } = req.body;
 
+  logger.info('[REGISTER] Registration request received', {
+    email,
+    name,
+    timestamp: new Date().toISOString()
+  });
+
   try {
     // Validate required fields
     if (!name || !email || !password) {
+      logger.warn('[REGISTER] Missing required fields', {
+        hasName: !!name,
+        hasEmail: !!email,
+        hasPassword: !!password
+      });
       return res.status(400).json({ message: "Name, email, and password are required" });
     }
 
+    logger.debug('[REGISTER] Validating password', {
+      email,
+      passwordLength: password?.length,
+      hasLetterAndNumber: /^(?=.*[A-Za-z])(?=.*\d).+$/.test(password)
+    });
+
     if (password.length < 8) {
+      logger.warn('[REGISTER] Password too short', { email });
       return res.status(400).json({ message: "Password must be at least 8 characters long" });
     }
 
     if (!/^(?=.*[A-Za-z])(?=.*\d).+$/.test(password)) {
+      logger.warn('[REGISTER] Password missing letter or number', { email });
       return res.status(400).json({ message: "Password must contain at least one letter and one number" });
     }
+
+    logger.debug('[REGISTER] Checking for existing user', { email });
 
     // Check if user already exists
     const existing = await User.findOne({ email });
     if (existing) {
+      logger.warn('[REGISTER] User already exists', {
+        email,
+        existingUserId: existing._id
+      });
       return res.status(400).json({ message: "User already exists with this email" });
     }
+
+    logger.debug('[REGISTER] Generating OTP and hashing password', { email });
 
     // Generate verification OTP (6-digit, 10-minute expiry)
     const verificationOTP = crypto.randomInt(100000, 1000000).toString();
     const hashedOTP = crypto.createHash('sha256').update(verificationOTP).digest('hex');
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    logger.debug('[REGISTER] OTP and password generated', {
+      email,
+      otpHash: hashedOTP.substring(0, 10) + '***',
+      passwordHashed: !!hashedPassword
+    });
 
     // Store registration data temporarily in Redis (or fallback to in-memory)
     const registrationData = {
@@ -76,42 +122,73 @@ export const registerUser = async (req, res) => {
       expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes for production
     };
 
+    logger.info('[REGISTER] Storing pending registration', {
+      email,
+      expiresAt: new Date(registrationData.expiresAt).toISOString()
+    });
+
     try {
       // Try Redis first
       await storePendingRegistration(email, registrationData);
+      logger.debug('[REGISTER] Stored in Redis', { email });
     } catch (redisError) {
       // Fallback to in-memory if Redis fails
-      // console.warn(`[REDIS] Failed, using in-memory fallback:`, redisError.message);
+      logger.warn('[REGISTER] Redis failed, using in-memory fallback', {
+        email,
+        error: redisError.message
+      });
       pendingRegistrations.set(email, registrationData);
     }
 
-    // console.log(`[REGISTER] Pending registration created for: ${email} (OTP expires in 10 minutes)`);
+    logger.info('[REGISTER] Pending registration created', {
+      email,
+      expiresIn: '10 minutes'
+    });
 
     try {
       // Send verification email
+      logger.info('[REGISTER] Attempting to send verification email', { email });
       await sendVerificationEmail({ name, email }, verificationOTP);
 
-      // console.log(`[REGISTER] ✅ Verification email sent to: ${email}`);
+      logger.info('[REGISTER] ✅ Verification email sent successfully', {
+        email,
+        timestamp: new Date().toISOString()
+      });
+
       res.status(200).json({
         message: "Verification code sent! Please check your email and enter the code within 10 minutes.",
         emailSent: true,
         expiresIn: "10 minutes"
       });
     } catch (emailError) {
-      // console.error(`[REGISTER] ❌ Error sending verification email to ${email}:`, emailError);
+      logger.error('[REGISTER] ❌ Failed to send verification email', {
+        email,
+        error: emailError.message,
+        errorCode: emailError.code,
+        stack: emailError.stack,
+        timestamp: new Date().toISOString()
+      });
+
       // Remove pending registration if email fails
       try {
         await deletePendingRegistration(email);
       } catch {
         pendingRegistrations.delete(email);
       }
+
       return res.status(500).json({
         message: 'Failed to send verification email. Please check your email address.',
-        emailSent: false
+        emailSent: false,
+        error: emailError.message
       });
     }
   } catch (err) {
-    // console.error(`[REGISTER] ❌ Registration error:`, err);
+    logger.error('[REGISTER] ❌ Unexpected registration error', {
+      email: req.body?.email,
+      error: err.message,
+      stack: err.stack,
+      timestamp: new Date().toISOString()
+    });
     res.status(500).json({ message: err.message });
   }
 };
@@ -119,29 +196,47 @@ export const registerUser = async (req, res) => {
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
+  logger.info('[LOGIN] Login attempt', {
+    email,
+    timestamp: new Date().toISOString()
+  });
+
   try {
+    logger.debug('[LOGIN] Fetching user from database', { email });
+
     const user = await User.findOne({ email }).select('+password');
-    // Security: Prevent username enumeration (always use generic error message)
-    // Note: We still check user existence but won't reveal it to the client yet if password fails
 
     if (!user) {
-      // Return same generic message, but maybe add a small random delay to mitigate timing attacks if needed
-      // For now, standardize the message
+      logger.warn('[LOGIN] User not found', { email });
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    logger.debug('[LOGIN] User found, checking email verification status', {
+      email,
+      isEmailVerified: user.isEmailVerified
+    });
+
     // Check if email is verified
     if (!user.isEmailVerified) {
+      logger.warn('[LOGIN] User attempted login without email verification', {
+        email,
+        userId: user._id
+      });
       return res.status(403).json({
         message: "Please verify your email before logging in. Check your inbox for the verification link.",
         emailNotVerified: true
       });
     }
 
+    logger.debug('[LOGIN] Verifying password', { email });
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      logger.warn('[LOGIN] Incorrect password', { email });
       return res.status(401).json({ message: "Invalid email or password" });
     }
+
+    logger.debug('[LOGIN] Password verified, generating JWT', { email });
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
@@ -152,13 +247,23 @@ export const loginUser = async (req, res) => {
       profileImage: user.profileImage
     };
 
-    // console.log('✅ Login successful for:', email, 'User ID:', user._id);
+    logger.info('[LOGIN] ✅ Login successful', {
+      email,
+      userId: user._id,
+      timestamp: new Date().toISOString()
+    });
+
     res.json({
       token,
       user: userResponse
     });
   } catch (err) {
-    // console.error('❌ Login error:', err);
+    logger.error('[LOGIN] ❌ Login error', {
+      email: req.body?.email,
+      error: err.message,
+      stack: err.stack,
+      timestamp: new Date().toISOString()
+    });
     res.status(500).json({ message: err.message });
   }
 };
