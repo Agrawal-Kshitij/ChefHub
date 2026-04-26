@@ -19,7 +19,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
        callbackURL:
         process.env.NODE_ENV === "production"
-          ? "https://chefhub.onrender.com/api/auth/google/callback"
+          ? "https://chefhub-backend1.onrender.com/api/auth/google/callback"
           : "http://localhost:5000/api/auth/google/callback",
       scope: ['profile', 'email']
     },
@@ -80,7 +80,7 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
       clientSecret: process.env.FACEBOOK_APP_SECRET,
       callbackURL: 
         process.env.NODE_ENV === "production"
-          ? "https://chefhub.onrender.com/api/auth/facebook/callback"
+          ? "https://chefhub-backend1.onrender.com/api/auth/facebook/callback"
           : "http://localhost:5000/api/auth/facebook/callback",
       profileFields: ['id', 'displayName', 'emails', 'photos'],
       enableProof: true

@@ -14,7 +14,7 @@ const getApiBaseUrl = () => {
     return 'http://localhost:5000';
   } else {
     // Priority 3: Default production URL
-    return 'https://chefhub.onrender.com';
+    return 'https://chefhub-backend1.onrender.com';
   }
 };
 
@@ -30,7 +30,7 @@ const getSocketUrl = () => {
   if (isDevelopment) {
     return 'http://localhost:5000';
   } else {
-    return 'https://chefhub.onrender.com';
+    return 'https://chefhub-backend1.onrender.com';
   }
 };
 
