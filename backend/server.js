@@ -45,7 +45,7 @@ if (!process.env.SESSION_SECRET) {
 // Security: CORS configuration with environment-based origins
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [
-    'https://chef-hub-coral.vercel.app', // Primary production URL
+    'https://chef-hub-coral.vercel.app', // Updated Vercel URL
     // Vercel preview / project URL
     // Add other verified production URLs here (or move to env-based list)
   ]
