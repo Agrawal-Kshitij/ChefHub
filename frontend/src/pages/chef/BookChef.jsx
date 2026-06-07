@@ -12,10 +12,9 @@ import BookingScheduleForm from '../../components/booking/BookingScheduleForm';
 import AddOnsSelector from '../../components/booking/AddOnsSelector';
 import PricingSummary from '../../components/booking/PricingSummary';
 import { geocodeAddress, getDistance, calculateTotal } from '../../components/booking/bookingUtils';
-import { serviceTypes } from '../../components/booking/bookingConstants.jsx';
 
 const BookChef = () => {
-  const { theme, classes, isDark, getClass } = useThemeAwareStyle();
+  const { isDark, getClass } = useThemeAwareStyle();
   const { id } = useParams();
   const navigate = useNavigate();
   const [chefs, setChefs] = useState([]);

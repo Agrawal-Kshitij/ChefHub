@@ -5,8 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import logo from '../../assets/logo.png'
 
 const Sidebar = () => {
-  const { theme, setTheme } = useTheme();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { theme } = useTheme();
+  const isCollapsed = false;
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated: isLoggedIn, user: userData, logout } = useAuth();
@@ -39,7 +39,14 @@ const Sidebar = () => {
   const inactiveClass = theme === 'dark' ? 'text-gray-200 hover:bg-gray-800/40 hover:text-white' : 'text-orange-700 hover:bg-orange-200/40 hover:text-orange-800 hover:scale-105';
 
   const handleLogout = async () => {
-    try { await logout(); navigate('/'); } catch (error) { }
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still navigate even if logout fails
+      navigate('/');
+    }
     setIsMobileOpen(false);
   };
 

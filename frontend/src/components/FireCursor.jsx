@@ -15,7 +15,6 @@ export default function FireCursor() {
     const cursor = cursorRef.current
     const particles = particlesRef.current
     let lastMove = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
-    let lastScrollY = window.scrollY
 
     function particleColor() {
       const colors = ['#ffcf66', '#ff5e2b', '#ffd89b', '#ff8a00']
@@ -61,7 +60,6 @@ export default function FireCursor() {
         const ry = y + (Math.random() - 0.5) * 100
         spawnParticle(rx, ry, 0.6 + Math.random() * 1.2)
       }
-      lastScrollY = window.scrollY
     }
 
     window.addEventListener('mousemove', onMove)

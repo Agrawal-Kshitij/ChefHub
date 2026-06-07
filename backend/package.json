@@ -2,7 +2,7 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "config.js",
+  "main": "server.js",
   "scripts": {
     "test": "node tests/integration_tests/test-ai-features.js",
     "test:ai": "node tests/integration_tests/test-ai-features.js",
@@ -23,7 +23,6 @@
     "compression": "^1.8.1",
     "connect-redis": "^6.1.3",
     "cors": "^2.8.5",
-    "crypto": "^1.0.1",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",

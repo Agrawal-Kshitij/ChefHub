@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFavorites } from '../../contexts/FavoritesContext';
+import toast from 'react-hot-toast';
 
 const FavoriteButton = ({
   chef,
@@ -28,8 +29,9 @@ const FavoriteButton = ({
 
     // Show user feedback
     if (wasAdded) {
-      // You could replace this with a toast notification
+      toast.success('Added to favorites!');
     } else {
+      toast.success('Removed from favorites!');
     }
   };
 

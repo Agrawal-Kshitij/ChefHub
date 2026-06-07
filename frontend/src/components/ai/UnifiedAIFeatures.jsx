@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 
 // AI Component: Personalized Chef Recommendations
 const AIChefRecommendations = ({ onGetRecommendations }) => {
-	const { getClass, classes, isDark } = useThemeAwareStyle();
+	const { classes, isDark } = useThemeAwareStyle();
 	const { token } = useAuth();
 	const [loading, setLoading] = useState(true);
 	const [recommendations, setRecommendations] = useState(null);
@@ -117,7 +117,7 @@ const AIChefRecommendations = ({ onGetRecommendations }) => {
 
 // AI Component: Menu Generator
 const AIMenuGenerator = ({ eventDetails, onMenuGenerated }) => {
-	const { getClass, classes, isDark } = useThemeAwareStyle();
+	const { classes, isDark } = useThemeAwareStyle();
 	const [loading, setLoading] = useState(false);
 	const [menu, setMenu] = useState(null);
 
@@ -238,7 +238,7 @@ const AIMenuGenerator = ({ eventDetails, onMenuGenerated }) => {
 
 // AI Component: Chat Assistant
 const AIChatAssistant = () => {
-	const { getClass, classes, isDark } = useThemeAwareStyle();
+	const { classes, isDark } = useThemeAwareStyle();
 	const { user } = useAuth();
 	const [messages, setMessages] = useState([]);
 	const [input, setInput] = useState('');
@@ -446,11 +446,10 @@ const AIChatAssistant = () => {
 
 // Main Unified AI Features Component
 const UnifiedAIFeatures = ({ mode = 'dashboard' }) => {
-	const { getClass, classes, isDark } = useThemeAwareStyle();
+	const { classes, isDark } = useThemeAwareStyle();
 	// Only dashboard mode now - removed booking workflow
 	const [activeMode, setActiveMode] = useState('dashboard');
 
-	// Define project-specific data
 	// Define project-specific data
 	const [cuisineOptions, setCuisineOptions] = useState([
 		'North Indian', 'South Indian', 'Continental', 'Chinese',

@@ -31,7 +31,7 @@ export const geocodeAddress = async (address) => {
     // Add a small delay to prevent rate limiting (stagger requests)
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    const res = await fetch(
+    const res = await fetchWithRetry(
       `${buildApiEndpoint('')}proxy/geocode?address=${encodeURIComponent(address)}`,
       { 
         method: 'GET',

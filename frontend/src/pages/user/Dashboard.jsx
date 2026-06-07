@@ -3,11 +3,10 @@ import { Link } from 'react-router-dom';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeAwareStyle } from '../../utils/themeUtils';
-import { cachedFetch } from '../../utils/apiCache';
 
 const Dashboard = () => {
   const { user, isAuthenticated, loading: authLoading, token } = useAuth();
-  const { theme, classes, isDark, getClass } = useThemeAwareStyle();
+  const { isDark, getClass } = useThemeAwareStyle();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);

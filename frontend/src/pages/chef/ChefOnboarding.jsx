@@ -10,7 +10,7 @@ import TextareaInput from '../../components/inputs/TextareaInput';
 import { prepareImageForUpload } from '../../utils/imageOptimizer';
 
 const ChefOnboarding = () => {
-  const { getClass, classes, isDark } = useThemeAwareStyle();
+  const { getClass, classes } = useThemeAwareStyle();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -310,13 +310,14 @@ const ChefOnboarding = () => {
       // Add profile image if uploaded
       if (formData.profileImage) {
         formDataToSend.append('profileImage', formData.profileImage);
-      } else {
       }
 
       // Log FormData contents
       for (let [key, value] of formDataToSend.entries()) {
         if (key === 'profileImage') {
+          console.log(`${key}: [File]`);
         } else {
+          console.log(`${key}:`, value);
         }
       }
 
@@ -326,8 +327,7 @@ const ChefOnboarding = () => {
         },
       });
 
-
-      const savedChef = response.data;
+      console.log('Chef onboarding response:', response.data);
       
       // Success message and redirect
       toast.success('Chef profile created successfully! Redirecting to dashboard...');

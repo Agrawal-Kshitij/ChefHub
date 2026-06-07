@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeToggleButton } from '../components/inputs';
 import { useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { Sidebar } from '../components/layout';
 import { useTheme } from '../context/ThemeContext';
 import { Footer } from '../components/layout';

@@ -27,7 +27,7 @@ const AIAnalyticsDashboard = () => {
       const response = await api.get('/bookings/admin/stats');
       setAnalyticsData(response.data.data);
       generateAIInsights(response.data.data);
-    } catch (error) {
+    } catch {
       // Fallback data for demo
       setAnalyticsData({
         totalUsers: 245,
@@ -57,6 +57,7 @@ const AIAnalyticsDashboard = () => {
       });
       setAiInsights(response.data.data);
     } catch (error) {
+      console.error('AI insights generation failed:', error);
     }
   };
 

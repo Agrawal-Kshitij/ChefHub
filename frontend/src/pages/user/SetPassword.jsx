@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
-import { useAuth } from '../../context/AuthContext';
 import { useThemeAwareStyle } from '../../utils/themeUtils';
 
 const SetPassword = () => {
@@ -20,7 +19,6 @@ const SetPassword = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { isDark } = useThemeAwareStyle();
 
   useEffect(() => {

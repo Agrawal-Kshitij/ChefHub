@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useThemeAwareStyle } from '../../utils/themeUtils';
+import { buildApiEndpoint } from '../../utils/apiConfig';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 

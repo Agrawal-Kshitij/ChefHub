@@ -5,7 +5,6 @@ const LocationInput = ({
   userLocation, 
   setUserLocation, 
   locationError, 
-  setLocationError,
   locationLoading, 
   onSetLocation,
   isDark 

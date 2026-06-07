@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// import { auth } from '../../firebase/config';
+import { auth } from '../../firebase/config';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { authAPI } from '../../utils/auth';
 import { useNavigate } from 'react-router-dom';
@@ -12,7 +12,6 @@ const MobileLogin = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [verificationId, setVerificationId] = useState('');
   const [confirmationResult, setConfirmationResult] = useState(null);
   const navigate = useNavigate();
 
@@ -21,7 +20,7 @@ const MobileLogin = () => {
     if (!window.recaptchaVerifier) {
       window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'normal',
-        callback: (response) => {
+        callback: () => {
         },
         'expired-callback': () => {
         }
@@ -85,7 +84,7 @@ const MobileLogin = () => {
         window.recaptchaVerifier.clear();
         window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
           size: 'normal',
-          callback: (response) => {
+          callback: () => {
           }
         });
       }
@@ -134,7 +133,7 @@ const MobileLogin = () => {
         window.recaptchaVerifier.clear();
         window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
           size: 'normal',
-          callback: (response) => {
+          callback: () => {
           }
         });
       }

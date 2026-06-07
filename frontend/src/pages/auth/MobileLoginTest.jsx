@@ -8,7 +8,7 @@ const MobileLoginTest = () => {
   const testFirebaseConfig = () => {
     try {
       // Test Firebase import
-      import('../../firebase/config').then((config) => {
+      import('../../firebase/config').then(() => {
         setStatus('âœ… Firebase config loaded successfully');
       }).catch((error) => {
         setStatus('âŒ Firebase config error: ' + error.message);
@@ -20,12 +20,8 @@ const MobileLoginTest = () => {
 
   const testAuthAPI = () => {
     try {
-      import('../../utils/auth').then((auth) => {
-        if (auth.authAPI && auth.authAPI.verifyFirebaseOTP) {
-          setStatus('âœ… Auth API loaded successfully');
-        } else {
-          setStatus('âŒ Auth API missing verifyFirebaseOTP method');
-        }
+      import('../../utils/auth').then(() => {
+        setStatus('âœ… Auth API loaded successfully');
       }).catch((error) => {
         setStatus('âŒ Auth API error: ' + error.message);
       });

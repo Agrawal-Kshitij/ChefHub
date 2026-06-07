@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useThemeAwareStyle } from '../../utils/themeUtils';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import api from '../../utils/api';
 
 const ChefProfile = () => {
   const { isDark, getClass } = useThemeAwareStyle();
   const { id } = useParams();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('about');
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [chef, setChef] = useState(null);

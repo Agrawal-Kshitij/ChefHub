@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { jwtDecode } from "jwt-decode";
 import { getToken, validateToken, removeToken } from '../utils/auth';
 
@@ -17,11 +17,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
 
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
+  const checkAuthStatus = useCallback(async () => {
     const token = getToken();
     
     if (!token) {
@@ -53,7 +49,7 @@ export const AuthProvider = ({ children }) => {
       
       // We can stop loading here because we have data!
       setIsLoading(false); 
-    } catch (e) {
+    } catch {
       // Token format invalid
       logout();
       setIsLoading(false);
@@ -70,8 +66,14 @@ export const AuthProvider = ({ children }) => {
         setUser(validation.user);
       }
     } catch (error) {
+      console.error('Token validation error:', error);
+      // Continue with local auth state
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   const login = (token, userData) => {
     

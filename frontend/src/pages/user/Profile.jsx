@@ -5,7 +5,7 @@ import api from '../../utils/api';
 import { useThemeAwareStyle } from '../../utils/themeUtils';
 
 const Profile = () => {
-  const { theme, classes, isDark, getClass } = useThemeAwareStyle();
+  const { isDark, getClass } = useThemeAwareStyle();
   const navigate = useNavigate();
   const { isAuthenticated, user: authUser, isLoading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
@@ -81,6 +81,7 @@ const Profile = () => {
           setHasPassword(passwordData.hasPassword);
           setIsOAuthUser(passwordData.isOAuthUser);
         } catch (passwordError) {
+          console.error('Password status check failed:', passwordError);
         }
 
       } catch (error) {

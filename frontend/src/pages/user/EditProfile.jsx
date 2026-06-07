@@ -87,6 +87,8 @@ const EditProfile = () => {
           setImagePreview(userData.profileImage);
         }
       } catch (error) {
+        console.error('Failed to load user data:', error);
+        toast.error('Failed to load profile data');
       } finally {
         setDataLoading(false);
       }

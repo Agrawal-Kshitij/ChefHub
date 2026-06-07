@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { useThemeAwareStyle } from '../../utils/themeUtils';
 
 const ViewBookings = () => {
-  const { theme, classes, isDark, getClass } = useThemeAwareStyle();
+  const { isDark, getClass } = useThemeAwareStyle();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

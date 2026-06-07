@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '../utils/api';
 
@@ -60,10 +60,6 @@ const AdvancedSearch = ({ onResults, onFiltersChange }) => {
     'Vegetarian', 'Vegan', 'Gluten-Free', 'Keto', 'Diabetic-Friendly', 'Jain'
   ];
 
-  const serviceTypeOptions = [
-    'Birthday Party', 'Marriage Ceremony', 'Daily Cooking', 'Corporate Events'
-  ];
-
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
@@ -81,7 +77,7 @@ const AdvancedSearch = ({ onResults, onFiltersChange }) => {
       } else {
         toast.error('Location not found. Please try a different address.');
       }
-    } catch (error) {
+    } catch {
       toast.error('Error searching for location. Please try again.');
     }
     setIsLoadingLocation(false);
@@ -96,7 +92,7 @@ const AdvancedSearch = ({ onResults, onFiltersChange }) => {
     handleFilterChange(key, newArray);
   };
 
-  const performSearch = async () => {
+  const performSearch = useCallback(async () => {
     setLoading(true);
     try {
       // Enhanced search with multiple parameters
@@ -108,8 +104,6 @@ const AdvancedSearch = ({ onResults, onFiltersChange }) => {
       if (filters.priceRange.max) searchParams.append('maxPrice', filters.priceRange.max);
       if (filters.rating) searchParams.append('minRating', filters.rating);
       if (filters.location) searchParams.append('location', filters.location);
-      if (filters.city) searchParams.append('city', filters.city);
-      if (filters.state) searchParams.append('state', filters.state);
       if (filters.city) searchParams.append('city', filters.city);
       if (filters.state) searchParams.append('state', filters.state);
 
@@ -140,12 +134,12 @@ const AdvancedSearch = ({ onResults, onFiltersChange }) => {
       
       setSearchResults(results);
       onResults?.(results);
-    } catch (error) {
+    } catch {
       setSearchResults([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, userLocation, onResults]);
 
   const clearFilters = () => {
     const clearedFilters = {
@@ -175,7 +169,7 @@ const AdvancedSearch = ({ onResults, onFiltersChange }) => {
     }, 500);
 
     return () => clearTimeout(debounceTimer);
-  }, [filters]);
+  }, [filters, performSearch]);
 
   return (
     <div className="bg-white rounded-3xl shadow-xl p-6 mb-8">

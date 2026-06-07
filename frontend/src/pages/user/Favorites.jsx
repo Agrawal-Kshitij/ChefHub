@@ -37,8 +37,8 @@ const geocodeAddress = async (address) => {
 };
 
 const Favorites = () => {
-  const { theme, classes, isDark, getClass } = useThemeAwareStyle();
-  const { favorites, removeFromFavorites } = useFavorites();
+  const { isDark } = useThemeAwareStyle();
+  const { favorites } = useFavorites();
   const [filter, setFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('');
   const [userLocation, setUserLocation] = useState(null);

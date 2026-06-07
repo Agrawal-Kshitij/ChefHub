@@ -57,7 +57,7 @@ const VerifyOTP = lazy(() => import('./pages/auth/VerifyOTP'));
 const App = () => {
   // Prevent scroll wheel from changing number inputs globally
   useEffect(() => {
-    const handleWheel = (e) => {
+    const handleWheel = () => {
       if (document.activeElement.type === 'number') {
         document.activeElement.blur();
       }

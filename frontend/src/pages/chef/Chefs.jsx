@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../utils/api';
 import { useThemeAwareStyle } from '../../utils/themeUtils';
 import FavoriteButton from '../../components/features/FavoriteButton';
-import { cachedFetch, invalidateCache } from '../../utils/apiCache';
+import { cachedFetch } from '../../utils/apiCache';
 import { debounce } from '../../utils/debounce';
 
 const Chefs = () => {
@@ -78,41 +78,7 @@ const Chefs = () => {
     }
   };
 
-  const fetchChefs = async () => {
-    try {
-      setLoading(true);
-      
-      // Build query parameters
-      const params = new URLSearchParams();
-      if (searchTerm) params.append('q', searchTerm); // Use 'q' instead of 'search'
-      if (selectedCuisine) params.append('cuisine', selectedCuisine);
-      if (selectedLocation) params.append('location', selectedLocation);
 
-      const queryString = params.toString();
-      const endpoint = queryString ? `/chefs/search?${queryString}` : '/chefs';
-      
-
-      const response = await api.get(endpoint);
-      const data = response.data;
-      
-      //   hasChefs: !!data.chefs,
-      //   hasData: !!data.data,
-      //   chefCount: data.chefs?.length || data.data?.length || 0,
-      //   responseKeys: Object.keys(data)
-      // });
-      
-      setChefs(data.chefs || data.data || []);
-      setError(null);
-    } catch (err) {
-      //   message: err.message,
-      //   stack: err.stack?.split('\n')[0] // First line of stack trace
-      // });
-      setError(err.message);
-      setChefs([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);

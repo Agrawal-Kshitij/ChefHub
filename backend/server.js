@@ -24,6 +24,7 @@ import compression from 'compression';
 import helmet from 'helmet';
 import hpp from 'hpp';
 import { initScheduledJobs } from './services/cronService.js';
+import { logger } from './utils/logger.js';
 
 const RedisStore = connectRedis(session);
 
@@ -191,11 +192,6 @@ app.use((err, req, res, next) => {
     ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
   });
 });
-
-
-import { logger } from './utils/logger.js';
-
-// ... imports ...
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
