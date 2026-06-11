@@ -13,14 +13,16 @@ import User from '../models/User.js';
 
 // Only configure Google OAuth if environment variables are present
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  const googleCallbackURL = process.env.GOOGLE_CALLBACK_URL ||
+    (process.env.NODE_ENV === 'production'
+      ? 'https://chefhub-backend1.onrender.com/api/auth/google/callback'
+      : 'http://localhost:5000/api/auth/google/callback');
+
   // console.log('Setting up Google OAuth strategy');
   passport.use(new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-       callbackURL:
-        process.env.NODE_ENV === "production"
-          ? "https://chefhub-backend1.onrender.com/api/auth/google/callback"
-          : "http://localhost:5000/api/auth/google/callback",
+      callbackURL: googleCallbackURL,
       scope: ['profile', 'email']
     },
     async (accessToken, refreshToken, profile, done) => {

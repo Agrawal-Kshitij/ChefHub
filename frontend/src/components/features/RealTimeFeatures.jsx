@@ -19,6 +19,8 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    // Debug: log token used for socket auth
+    console.debug('[SOCKET_DEBUG] token from localStorage:', token);
     
     const newSocket = io(SOCKET_URL, {
       auth: {
@@ -32,6 +34,19 @@ export const SocketProvider = ({ children }) => {
 
     newSocket.on('disconnect', () => {
       setIsConnected(false);
+    });
+
+    // Debug: capture connection errors for diagnosis
+    newSocket.on('connect_error', (err) => {
+      console.error('[SOCKET_DEBUG] connect_error:', err);
+    });
+
+    newSocket.on('connect_timeout', (err) => {
+      console.error('[SOCKET_DEBUG] connect_timeout:', err);
+    });
+
+    newSocket.on('error', (err) => {
+      console.error('[SOCKET_DEBUG] generic socket error:', err);
     });
 
     // Listen for booking status updates
