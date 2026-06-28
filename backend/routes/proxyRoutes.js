@@ -116,12 +116,36 @@ router.get('/razorpay-config', (req, res) => {
 });
 
 /**
- * OpenRouteService Geocoding Proxy
+ * Geocoding Proxy
  * Proxies geocoding requests to prevent API key exposure
+ * Falls back to OpenStreetMap Nominatim when OpenRouteService is not configured.
  */
+const fetchNominatimGeocode = async (address) => {
+  const response = await axios.get('https://nominatim.openstreetmap.org/search', {
+    params: {
+      q: address,
+      format: 'json',
+      limit: 1
+    },
+    headers: {
+      'User-Agent': 'ChefHub/1.0 (contact@chefhub.example)'
+    }
+  });
+
+  if (Array.isArray(response.data) && response.data.length > 0) {
+    const result = response.data[0];
+    return {
+      latitude: parseFloat(result.lat),
+      longitude: parseFloat(result.lon),
+      source: 'nominatim'
+    };
+  }
+  return null;
+};
+
 router.get('/geocode', async (req, res) => {
   try {
-    const { address } = req.query;
+    const address = req.query.address?.trim();
 
     if (!address) {
       return res.status(400).json({ 
@@ -130,40 +154,56 @@ router.get('/geocode', async (req, res) => {
       });
     }
 
-    if (!process.env.ORS_API_KEY) {
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Geocoding service not configured' 
-      });
-    }
+    let geocodeResult = null;
+    let source = 'openrouteservice';
+    let lastError = null;
 
-    const response = await axios.get(
-      `https://api.openrouteservice.org/geocode/search`,
-      {
-        params: {
-          api_key: process.env.ORS_API_KEY,
-          text: address
+    if (process.env.ORS_API_KEY) {
+      try {
+        const response = await axios.get(
+          `https://api.openrouteservice.org/geocode/search`,
+          {
+            params: {
+              api_key: process.env.ORS_API_KEY,
+              text: address
+            }
+          }
+        );
+
+        if (response.data.features && response.data.features.length > 0) {
+          const coordinates = response.data.features[0].geometry.coordinates;
+          geocodeResult = {
+            latitude: coordinates[1],
+            longitude: coordinates[0],
+            fullResponse: response.data,
+            source: 'openrouteservice'
+          };
         }
+      } catch (error) {
+        lastError = error;
+        console.warn('OpenRouteService geocoding failed, falling back to Nominatim:', error.response?.data || error.message);
       }
-    );
-
-    // Return the geocoding results
-    if (response.data.features && response.data.features.length > 0) {
-      const coordinates = response.data.features[0].geometry.coordinates;
-      res.json({ 
-        success: true, 
-        data: {
-          latitude: coordinates[1],
-          longitude: coordinates[0],
-          fullResponse: response.data
-        }
-      });
     } else {
-      res.json({ 
+      source = 'nominatim';
+    }
+
+    if (!geocodeResult) {
+      geocodeResult = await fetchNominatimGeocode(address);
+      source = 'nominatim';
+    }
+
+    if (!geocodeResult) {
+      return res.status(404).json({ 
         success: false, 
-        error: 'No results found for the given address' 
+        error: 'No results found for the given address',
+        details: lastError?.response?.data || lastError?.message
       });
     }
+
+    res.json({ 
+      success: true, 
+      data: geocodeResult
+    });
   } catch (error) {
     console.error('Geocoding error:', error.response?.data || error.message);
     res.status(500).json({ 
