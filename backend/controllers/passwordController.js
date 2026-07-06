@@ -1,11 +1,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import * as brevo from '@getbrevo/brevo';
 import User from '../models/User.js';
-
-// Initialize Brevo API client
-const apiInstance = new brevo.TransactionalEmailsApi();
-apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+import { sendTransactionalEmail } from '../utils/brevoEmailService.js';
 
 // Request password reset
 export const forgotPassword = async (req, res) => {
@@ -34,16 +30,9 @@ export const forgotPassword = async (req, res) => {
     // Create reset URL
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
 
-    // Send email using Brevo
+    // Send password reset email using Brevo helper
     try {
-      const fromEmail = process.env.BREVO_FROM_EMAIL || 'bhashkarkumar2063@gmail.com';
-      const fromName = process.env.BREVO_FROM_NAME || 'ChefHub';
-
-      const sendSmtpEmail = new brevo.SendSmtpEmail();
-      sendSmtpEmail.sender = { name: fromName, email: fromEmail };
-      sendSmtpEmail.to = [{ email: user.email, name: user.name }];
-      sendSmtpEmail.subject = '🔐 Reset Your ChefHub Password';
-      sendSmtpEmail.htmlContent = `
+      const htmlContent = `
           <!DOCTYPE html>
           <html>
           <head>
@@ -87,25 +76,35 @@ export const forgotPassword = async (req, res) => {
           </html>
         `;
 
-      const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
-      // console.log('✅ Password reset email sent to:', user.email);
+      const textContent = `Hi ${user.name},\n\nWe received a request to reset your password for your ChefHub account. Use the link below to reset it:\n\n${resetUrl}\n\nThis link expires in 10 minutes. If you did not request this, please ignore this email.\n\n-- The ChefHub Team`;
 
-      res.json({
-        message: 'Password reset link has been sent to your email',
-        success: true
+      await sendTransactionalEmail({
+        to: [{ email: user.email, name: user.name }],
+        subject: '🔐 Reset Your ChefHub Password',
+        htmlContent,
+        textContent
       });
-    } catch (emailError) {
-      console.error('❌ Error sending email:', emailError);
 
-      // SECURITY: Never expose reset tokens in API response
-      // Log the URL for debugging but don't return it to client
-      if (process.env.NODE_ENV === 'development') {
+      const successResponse = {
+        message: 'If an account exists with this email, a password reset link will be sent.',
+        success: true
+      };
+
+      if (process.env.NODE_ENV !== 'production') {
+        successResponse.debugResetUrl = resetUrl;
+      }
+
+      return res.json(successResponse);
+    } catch (emailError) {
+      console.error('❌ Error sending password reset email:', emailError?.response?.data || emailError.message || emailError);
+      if (process.env.NODE_ENV !== 'production') {
         console.log('📧 Development mode - Reset URL (for debugging only):', resetUrl);
       }
 
-      return res.status(500).json({
-        message: 'Failed to send reset email. Please try again later.',
-        success: false
+      return res.json({
+        message: 'If an account exists with this email, a password reset link will be sent.',
+        success: true,
+        ...(process.env.NODE_ENV !== 'production' && { debugResetUrl: resetUrl })
       });
     }
   } catch (error) {

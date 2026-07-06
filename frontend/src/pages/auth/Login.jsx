@@ -72,6 +72,11 @@ const Login = () => {
           message: errorData.message,
           canResend: true
         });
+      } else if (errorData?.isOAuthUser) {
+        setError({
+          message: errorData.message,
+          showResetPassword: true
+        });
       } else {
         setError(errorData?.message || 'Login failed. Please try again.');
       }
@@ -153,6 +158,17 @@ const Login = () => {
                       '📧 Resend Verification Email'
                     )}
                   </button>
+                )}
+                {error.showResetPassword && (
+                  <div className="mt-3 text-sm text-gray-700">
+                    <p>If your email is linked to social login, please use the same provider or reset your password.</p>
+                    <Link
+                      to="/forgot-password"
+                      className="inline-block mt-2 text-orange-600 hover:text-orange-700 font-medium"
+                    >
+                      Reset password
+                    </Link>
+                  </div>
                 )}
               </div>
             )}

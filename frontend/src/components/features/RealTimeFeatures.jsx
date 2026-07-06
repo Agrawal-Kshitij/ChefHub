@@ -1,6 +1,7 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../../utils/apiConfig';
+import { useAuth } from '../../context/AuthContext';
 
 const SocketContext = createContext();
 
@@ -16,16 +17,33 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const { token, isAuthenticated, loading } = useAuth();
+  const socketRef = useRef(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    // Debug: log token used for socket auth
-    console.debug('[SOCKET_DEBUG] token from localStorage:', token);
-    
+    if (loading) {
+      return; // Wait until auth state is resolved
+    }
+
+    if (!token || !isAuthenticated) {
+      // Don't attempt to connect without a valid authenticated user
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+      setSocket(null);
+      setIsConnected(false);
+      return;
+    }
+
+    console.debug('[SOCKET_DEBUG] connecting with token:', token);
+
     const newSocket = io(SOCKET_URL, {
       auth: {
         token
-      }
+      },
+      transports: ['websocket', 'polling'],
+      autoConnect: true
     });
 
     newSocket.on('connect', () => {
@@ -110,11 +128,13 @@ export const SocketProvider = ({ children }) => {
     });
 
     setSocket(newSocket);
+    socketRef.current = newSocket;
 
     return () => {
       newSocket.close();
+      socketRef.current = null;
     };
-  }, []);
+  }, [token]);
 
   const addNotification = (notification) => {
     setNotifications(prev => [notification, ...prev].slice(0, 10)); // Keep only latest 10

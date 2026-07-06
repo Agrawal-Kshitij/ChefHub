@@ -91,12 +91,28 @@ export const registerUser = async (req, res) => {
     logger.debug('[REGISTER] Checking for existing user', { email });
 
     // Check if user already exists
-    const existing = await User.findOne({ email });
+    const existing = await User.findOne({ email }).select('+password');
     if (existing) {
+      const isOAuthOnly = !existing.password && (existing.googleId || existing.facebookId || existing.firebaseUid);
       logger.warn('[REGISTER] User already exists', {
         email,
-        existingUserId: existing._id
+        existingUserId: existing._id,
+        isOAuthOnly,
+        isEmailVerified: existing.isEmailVerified
       });
+
+      if (isOAuthOnly) {
+        return res.status(400).json({
+          message: "An account already exists with this email using social login. Please sign in with the same provider or reset your password."
+        });
+      }
+
+      if (!existing.isEmailVerified) {
+        return res.status(400).json({
+          message: "An account exists with this email but it is not verified yet. Please check your inbox for the verification email or request a new code."
+        });
+      }
+
       return res.status(400).json({ message: "User already exists with this email" });
     }
 
@@ -225,6 +241,18 @@ export const loginUser = async (req, res) => {
       return res.status(403).json({
         message: "Please verify your email before logging in. Check your inbox for the verification link.",
         emailNotVerified: true
+      });
+    }
+
+    // Guard against accounts that exist but do not have a password set yet
+    if (!user.password) {
+      logger.warn('[LOGIN] Password login attempted for OAuth-only account', {
+        email,
+        userId: user._id
+      });
+      return res.status(400).json({
+        message: "This account does not have a password set. Please login with Google/Facebook or reset your password.",
+        isOAuthUser: true
       });
     }
 

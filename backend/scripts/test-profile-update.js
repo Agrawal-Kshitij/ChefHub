@@ -12,9 +12,9 @@ async function testProfileUpdate() {
     
     // Test data that matches updated User model
     const updateData = {
-      name: "Bhashkar Kumar Updated",
+      name: "Kshitij Agrawal",
       email: "test@example.com", // Keep existing email
-      phone: "+91-9876543210",
+      phone: "+91-6267205658",
       city: "Mumbai",
       state: "Maharashtra",
       country: "India",

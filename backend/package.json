@@ -8,7 +8,8 @@
     "test:ai": "node tests/integration_tests/test-ai-features.js",
     "test:health": "node tests/integration_tests/test-ai-features.js health",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "seed:chefs": "node scripts/create-test-chefs.js"
   },
   "keywords": [],
   "author": "",

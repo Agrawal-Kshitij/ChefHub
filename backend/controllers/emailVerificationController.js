@@ -1,12 +1,8 @@
 import crypto from 'crypto';
-import * as brevo from '@getbrevo/brevo';
 import User from '../models/User.js';
 import { getPendingRegistration, deletePendingRegistration, storePendingRegistration, pendingRegistrations } from '../auth/authController.js';
 import { logger } from '../utils/logger.js';
-
-// Initialize Brevo API client
-const apiInstance = new brevo.TransactionalEmailsApi();
-apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+import { sendTransactionalEmail } from '../utils/brevoEmailService.js';
 
 // Send verification email with OTP using Brevo
 export const sendVerificationEmail = async (user, verificationOTP) => {
@@ -16,14 +12,6 @@ export const sendVerificationEmail = async (user, verificationOTP) => {
       userName: user.name,
       timestamp: new Date().toISOString()
     });
-
-    // Validate environment variables
-    if (!process.env.BREVO_API_KEY) {
-      logger.error('[OTP_EMAIL] Missing BREVO_API_KEY environment variable', {
-        userEmail: user.email
-      });
-      throw new Error('BREVO_API_KEY is not configured');
-    }
 
     const fromEmail = process.env.BREVO_FROM_EMAIL || 'bhashkarkumar2063@gmail.com';
     const fromName = process.env.BREVO_FROM_NAME || 'ChefHub';
@@ -35,11 +23,7 @@ export const sendVerificationEmail = async (user, verificationOTP) => {
       toName: user.name
     });
     
-    const sendSmtpEmail = new brevo.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: fromName, email: fromEmail };
-    sendSmtpEmail.to = [{ email: user.email, name: user.name }];
-    sendSmtpEmail.subject = '🔐 Verify Your ChefHub Account';
-    sendSmtpEmail.htmlContent = `
+    const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
@@ -110,17 +94,21 @@ export const sendVerificationEmail = async (user, verificationOTP) => {
 
     logger.debug('[OTP_EMAIL] Email content prepared', {
       userEmail: user.email,
-      htmlLength: sendSmtpEmail.htmlContent?.length || 0
+      htmlLength: htmlContent?.length || 0
     });
 
     logger.info('[OTP_EMAIL] Sending OTP email via Brevo', {
       toEmail: user.email,
       toName: user.name,
-      fromEmail: fromEmail,
-      fromName: fromName
+      subject: '🔐 Verify Your ChefHub Account'
     });
 
-    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    const result = await sendTransactionalEmail({
+      to: [{ email: user.email, name: user.name }],
+      subject: '🔐 Verify Your ChefHub Account',
+      htmlContent,
+      textContent: `Your ChefHub verification code is ${verificationOTP}. Enter it on the verification page. This code expires in 10 minutes.`
+    });
 
     logger.info('[OTP_EMAIL] ✅ Email sent successfully', {
       userEmail: user.email,
@@ -282,15 +270,9 @@ export const verifyEmail = async (req, res) => {
 // Send review reminder email after booking completion
 export const sendReviewReminderEmail = async (userEmail, userName, chefName, bookingId) => {
   try {
-    const fromEmail = process.env.BREVO_FROM_EMAIL || 'bhashkarkumar2063@gmail.com';
-    const fromName = process.env.BREVO_FROM_NAME || 'ChefHub';
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    
-    const sendSmtpEmail = new brevo.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: fromName, email: fromEmail };
-    sendSmtpEmail.to = [{ email: userEmail, name: userName }];
-    sendSmtpEmail.subject = '⭐ Rate Your Experience with ' + chefName;
-    sendSmtpEmail.htmlContent = `
+
+    const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
@@ -357,11 +339,15 @@ export const sendReviewReminderEmail = async (userEmail, userName, chefName, boo
         </html>
       `;
 
-    await apiInstance.sendTransacEmail(sendSmtpEmail);
-    // console.log('Review reminder email sent successfully to:', userEmail);
-    
+    const textContent = `Hi ${userName},\n\nThank you for using ChefHub. Please share your review for ${chefName} here: ${frontendUrl}/add-testimonial?bookingId=${bookingId}\n\nThank you!\nThe ChefHub Team`;
+
+    await sendTransactionalEmail({
+      to: [{ email: userEmail, name: userName }],
+      subject: `⭐ Rate Your Experience with ${chefName}`,
+      htmlContent,
+      textContent
+    });
   } catch (error) {
-    // console.error('Error sending review reminder email:', error);
     throw error;
   }
 };
