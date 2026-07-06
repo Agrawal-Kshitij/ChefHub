@@ -7,7 +7,6 @@ import { ThemeProvider } from './context/ThemeContext';
 import { SocketProvider } from './components/features/RealTimeFeatures';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import MainLayout from './layouts/MainLayout';
-import FireCursor from './components/FireCursor';
 
 // Loading component
 const PageLoader = () => (
@@ -99,7 +98,6 @@ const App = () => {
                 }}
               />
               <div className="min-h-screen overflow-x-hidden max-w-full no-overflow">
-                <FireCursor />
                 <MainLayout>
                   <main className="flex-1">
                     <Suspense fallback={<PageLoader />}>
