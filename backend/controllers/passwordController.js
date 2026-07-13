@@ -101,9 +101,14 @@ export const forgotPassword = async (req, res) => {
         console.log('📧 Development mode - Reset URL (for debugging only):', resetUrl);
       }
 
-      return res.json({
-        message: 'If an account exists with this email, a password reset link will be sent.',
-        success: true,
+      // Prevent keeping an unusable reset token when email delivery fails.
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save();
+
+      return res.status(500).json({
+        message: 'Unable to send reset email right now. Please try again in a few minutes.',
+        success: false,
         ...(process.env.NODE_ENV !== 'production' && { debugResetUrl: resetUrl })
       });
     }

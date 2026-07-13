@@ -86,11 +86,6 @@ export const sendTransactionalEmail = async ({ to, subject, htmlContent, textCon
       subject,
     });
 
-    if (process.env.NODE_ENV !== 'production') {
-      logger.warn('[BREVO_EMAIL_SERVICE] Sending failed in development, returning mock success');
-      return { messageId: 'development-fallback-message-id' };
-    }
-
     throw error;
   }
 };
